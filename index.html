@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nepali Practice</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <h1>🇳🇵 Nepali Practice</h1>
+  <div id="stats">
+    <div class="stat">
+      <span class="stat-label">🔥 Streak</span>
+      <span class="stat-val" id="streak-val">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">✓ Score</span>
+      <span class="stat-val" id="score-val">0</span>
+    </div>
+    <button id="reset-btn">Reset session</button>
+  </div>
+</div>
+
+<!-- Mode selector -->
+<div id="mode-bar">
+  <button class="mode-btn active" data-mode="vocab">Vocab</button>
+  <button class="mode-btn" data-mode="mc">Multiple Choice</button>
+  <button class="mode-btn" data-mode="comprehend">Comprehend</button>
+  <button class="mode-btn" data-mode="produce">Produce</button>
+</div>
+
+<!-- Filter bar -->
+<div id="filter-bar">
+  <label>Filter:</label>
+  <!-- chips injected by JS -->
+</div>
+
+<!-- Main practice area -->
+<div id="main">
+  <div id="progress-wrap"><div id="progress-bar" style="width:0%"></div></div>
+  <div id="card-area"></div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
