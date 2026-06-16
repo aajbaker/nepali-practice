@@ -102,25 +102,21 @@ body {
 #filter-bar label {
   font-size: 0.8rem;
   color: var(--text-muted);
-  margin-right: 2px;
+  margin-right: 6px;
 }
 
-.filter-chip {
-  padding: 4px 12px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
+#filter-select {
+  font-size: 0.85rem;
+  padding: 5px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
   background: var(--surface);
-  font-size: 0.78rem;
+  color: var(--text);
   cursor: pointer;
-  transition: all 0.12s;
+  outline: none;
+  transition: border-color 0.15s;
 }
-.filter-chip:hover { border-color: var(--accent); }
-.filter-chip.active {
-  background: #eff6ff;
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
-}
+#filter-select:focus { border-color: var(--accent); }
 
 /* ── Main card area ── */
 #main {
@@ -334,6 +330,7 @@ body {
   -webkit-backface-visibility: visible;
   transform: none;
   border-radius: var(--radius);
+  padding-bottom: 18px;
 }
 
 #mc-options {
@@ -342,7 +339,7 @@ body {
   gap: 10px;
   width: 100%;
   max-width: 480px;
-  margin-top: 8px;
+  margin: 6px auto 0;
 }
 
 .mc-option {

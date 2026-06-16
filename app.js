@@ -219,17 +219,19 @@ function buildFlipCard(frontNodes, backNodes) {
   });
 
   // Swipe (mobile)
-  let t0x = 0, t0y = 0;
+  let t0x = 0, t0y = 0, tMoved = false;
   card.addEventListener("touchstart", (e) => {
     t0x = e.touches[0].clientX;
     t0y = e.touches[0].clientY;
     swipeHandled = false;
+    tMoved = false;
   }, { passive: true });
 
   card.addEventListener("touchmove", (e) => {
     const dx = e.touches[0].clientX - t0x;
     const dy = e.touches[0].clientY - t0y;
-    if (Math.abs(dx) > Math.abs(dy)) e.preventDefault(); // block page scroll on horizontal swipe
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) tMoved = true;
+    if (Math.abs(dx) > Math.abs(dy)) e.preventDefault(); // block horizontal scroll during swipe
   }, { passive: false });
 
   card.addEventListener("touchend", (e) => {
@@ -237,17 +239,15 @@ function buildFlipCard(frontNodes, backNodes) {
     const dy = e.changedTouches[0].clientY - t0y;
     const adx = Math.abs(dx), ady = Math.abs(dy);
 
-    if (adx > ady && adx > 55) {
-      // Horizontal swipe → resolve (only when revealed)
-      if (!state.revealed) return;
+    if (adx > ady && adx > 45 && state.revealed) {
+      // Horizontal swipe → resolve
       swipeHandled = true;
-      resolveCard(dx > 0); // right = got it, left = missed it
-    } else if (ady > adx && ady > 45) {
-      // Vertical swipe → flip
+      resolveCard(dx > 0);
+    } else if (tMoved) {
+      // Finger moved but wasn't a clean swipe (scrolling) → suppress click
       swipeHandled = true;
-      state.revealed = !state.revealed;
-      card.classList.toggle("flipped", state.revealed);
     }
+    // else: clean tap → let the click event fire and flip
   }, { passive: true });
 
   if (state.revealed) card.classList.add("flipped");
@@ -430,23 +430,27 @@ function renderCompletion() {
 /* ── Filter bar ── */
 function buildFilterBar() {
   const bar = $("filter-bar");
-  bar.innerHTML = "<label>Filter:</label>";
+  bar.innerHTML = "<label for='filter-select'>Filter:</label>";
 
   const filters = usesVocab()
     ? ["all", ...VOCAB_CATEGORIES]
     : ["all", ...SENTENCE_THEMES];
 
+  const select = document.createElement("select");
+  select.id = "filter-select";
   filters.forEach(f => {
-    const chip = el("button","filter-chip", f === "all" ? "All" : f);
-    if (f === state.filter) chip.classList.add("active");
-    chip.addEventListener("click", () => {
-      state.filter = f;
-      saveState();
-      buildFilterBar();
-      startDeck();
-    });
-    bar.appendChild(chip);
+    const opt = document.createElement("option");
+    opt.value = f;
+    opt.textContent = f === "all" ? "All" : f;
+    if (f === state.filter) opt.selected = true;
+    select.appendChild(opt);
   });
+  select.addEventListener("change", () => {
+    state.filter = select.value;
+    saveState();
+    startDeck();
+  });
+  bar.appendChild(select);
 }
 
 /* ── Start / restart deck ── */
