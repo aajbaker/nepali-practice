@@ -153,6 +153,14 @@ function makePronToggle(romEl) {
   return btn;
 }
 
+/* ── Resolve card (animate out, then advance) ── */
+function resolveCard(correct) {
+  const card = document.querySelector(".card");
+  if (!card) { nextCard(correct); return; }
+  card.classList.add(correct ? "fly-right" : "fly-left");
+  card.addEventListener("animationend", () => nextCard(correct), { once: true });
+}
+
 /* ── Next card ── */
 function nextCard(correct) {
   if (correct === true)  { state.streak++; state.score++; }
@@ -188,181 +196,177 @@ function renderCard() {
   else if (isMCMode())         renderMC(area, entry);
 }
 
-/* ── Vocab mode ── */
-function renderVocab(area, { item, direction }) {
-  const card = el("div","card");
-  const dir  = el("div","card-direction",
-    direction === "eng-to-nep" ? "English → Nepali" : "Nepali → English");
-  card.appendChild(dir);
+/* ── Flip card builder ── */
+function buildFlipCard(frontNodes, backNodes) {
+  const card  = el("div", "card");
+  const inner = el("div", "card-inner");
+  const front = el("div", "card-front");
+  const back  = el("div", "card-back");
 
-  if (direction === "eng-to-nep") {
-    card.appendChild(el("div","card-eng", item.eng));
-    card.appendChild(el("div","card-hint","What is this in Nepali?"));
-  } else {
-    const dev = el("div","card-dev", item.dev);
-    const rom = el("div","card-rom", item.rom);
-    card.appendChild(dev);
-    card.appendChild(makePronToggle(rom));
-    card.appendChild(rom);
-  }
+  frontNodes.forEach(n => front.appendChild(n));
+  backNodes.forEach(n  => back.appendChild(n));
+  inner.appendChild(front);
+  inner.appendChild(back);
+  card.appendChild(inner);
 
-  card.appendChild(makeExplainBtn(item));
-  area.appendChild(card);
+  // Click to flip (desktop)
+  let swipeHandled = false;
+  card.addEventListener("click", (e) => {
+    if (swipeHandled) { swipeHandled = false; return; }
+    if (e.target.closest("button")) return;
+    state.revealed = !state.revealed;
+    card.classList.toggle("flipped", state.revealed);
+  });
 
-  if (!state.revealed) {
-    const revBtn = el("button","btn btn-ghost","Show answer");
-    revBtn.id = "reveal-btn";
-    revBtn.addEventListener("click", () => {
-      state.revealed = true;
-      renderVocabAnswer(area, item, direction);
-      revBtn.remove();
-    });
-    area.appendChild(revBtn);
-  } else {
-    renderVocabAnswer(area, item, direction);
-  }
+  // Swipe (mobile)
+  let t0x = 0, t0y = 0;
+  card.addEventListener("touchstart", (e) => {
+    t0x = e.touches[0].clientX;
+    t0y = e.touches[0].clientY;
+    swipeHandled = false;
+  }, { passive: true });
+
+  card.addEventListener("touchmove", (e) => {
+    const dx = e.touches[0].clientX - t0x;
+    const dy = e.touches[0].clientY - t0y;
+    if (Math.abs(dx) > Math.abs(dy)) e.preventDefault(); // block page scroll on horizontal swipe
+  }, { passive: false });
+
+  card.addEventListener("touchend", (e) => {
+    const dx = e.changedTouches[0].clientX - t0x;
+    const dy = e.changedTouches[0].clientY - t0y;
+    const adx = Math.abs(dx), ady = Math.abs(dy);
+
+    if (adx > ady && adx > 55) {
+      // Horizontal swipe → resolve (only when revealed)
+      if (!state.revealed) return;
+      swipeHandled = true;
+      resolveCard(dx > 0); // right = got it, left = missed it
+    } else if (ady > adx && ady > 45) {
+      // Vertical swipe → flip
+      swipeHandled = true;
+      state.revealed = !state.revealed;
+      card.classList.toggle("flipped", state.revealed);
+    }
+  }, { passive: true });
+
+  if (state.revealed) card.classList.add("flipped");
+  return card;
 }
 
-function renderVocabAnswer(area, item, direction) {
-  const box = el("div","answer-box");
-  if (direction === "eng-to-nep") {
-    box.appendChild(el("div","ans-dev", item.dev));
-    const rom = el("div","card-rom", item.rom);
-    if (state.showRom) rom.classList.add("visible");
-    box.appendChild(rom);
-    const togBtn = el("button","pron-toggle",
-      state.showRom ? "hide pronunciation" : "pronunciation");
-    togBtn.addEventListener("click", () => {
-      state.showRom = !state.showRom;
-      saveState();
-      rom.classList.toggle("visible", state.showRom);
-      togBtn.textContent = state.showRom ? "hide pronunciation" : "pronunciation";
-    });
-    box.appendChild(togBtn);
-  } else {
-    box.appendChild(el("div","ans-eng", item.eng));
-  }
-  area.appendChild(box);
-
-  const row = el("div","btn-row");
-  const gotBtn = el("button","btn btn-success","✓ Got it");
-  const missBtn= el("button","btn btn-danger","✗ Missed it");
-  gotBtn.addEventListener("click",  () => nextCard(true));
-  missBtn.addEventListener("click", () => nextCard(false));
+function makeGotItRow() {
+  const row     = el("div", "btn-row");
+  const missBtn = el("button", "btn btn-danger btn-action");
+  missBtn.innerHTML = "<span>←</span><span>Missed it</span>";
+  const gotBtn  = el("button", "btn btn-success btn-action");
+  gotBtn.innerHTML  = "<span>Got it</span><span>→</span>";
+  missBtn.addEventListener("click", (e) => { e.stopPropagation(); resolveCard(false); });
+  gotBtn.addEventListener( "click", (e) => { e.stopPropagation(); resolveCard(true);  });
   row.appendChild(missBtn);
   row.appendChild(gotBtn);
-  area.appendChild(row);
+  return row;
+}
+
+/* ── Vocab mode ── */
+function renderVocab(area, { item, direction }) {
+  // Front
+  const frontNodes = [
+    el("div","card-direction", direction === "eng-to-nep" ? "English → Nepali" : "Nepali → English"),
+  ];
+  if (direction === "eng-to-nep") {
+    frontNodes.push(el("div","card-eng", item.eng));
+    frontNodes.push(el("div","card-hint","What is this in Nepali?"));
+  } else {
+    const rom = el("div","card-rom", item.rom);
+    frontNodes.push(el("div","card-dev", item.dev));
+    frontNodes.push(makePronToggle(rom));
+    frontNodes.push(rom);
+  }
+
+  // Back
+  const backNodes = [
+    el("div","card-direction","Answer"),
+  ];
+  if (direction === "eng-to-nep") {
+    const rom = el("div","card-rom", item.rom);
+    backNodes.push(el("div","card-dev", item.dev));
+    backNodes.push(makePronToggle(rom));
+    backNodes.push(rom);
+  } else {
+    backNodes.push(el("div","card-eng", item.eng));
+  }
+  backNodes.push(makeExplainBtn(item));
+  backNodes.push(makeGotItRow());
+
+  area.appendChild(buildFlipCard(frontNodes, backNodes));
 }
 
 /* ── Comprehend mode ── */
 function renderComprehend(area, { item }) {
-  const card = el("div","card");
-  card.appendChild(el("div","card-direction","Nepali sentence → understand it"));
-  card.appendChild(el("div","card-dev", item.dev));
+  // Front
   const rom = el("div","card-rom", item.rom);
-  card.appendChild(makePronToggle(rom));
-  card.appendChild(rom);
-  card.appendChild(el("div","card-hint",
-    `Tense: ${item.tense || "—"} · Theme: ${item.theme || "—"}`));
-  card.appendChild(makeExplainBtn(item));
-  area.appendChild(card);
+  const frontNodes = [
+    el("div","card-direction","Nepali sentence → understand it"),
+    el("div","card-dev", item.dev),
+    makePronToggle(rom),
+    rom,
+    el("div","card-hint", `Tense: ${item.tense || "—"} · Theme: ${item.theme || "—"}`),
+  ];
 
-  if (!state.revealed) {
-    const revBtn = el("button","btn btn-ghost","Reveal translation");
-    revBtn.id = "reveal-btn";
-    revBtn.addEventListener("click", () => {
-      state.revealed = true;
-      renderComprehendAnswer(area, item);
-      revBtn.remove();
-    });
-    area.appendChild(revBtn);
-  } else {
-    renderComprehendAnswer(area, item);
-  }
+  // Back
+  const backNodes = [
+    el("div","card-direction","Translation"),
+    el("div","card-eng", item.eng),
+    makeExplainBtn(item),
+    makeGotItRow(),
+  ];
+
+  area.appendChild(buildFlipCard(frontNodes, backNodes));
 }
 
-function renderComprehendAnswer(area, item) {
-  const box = el("div","answer-box");
-  box.appendChild(el("div","ans-eng", item.eng));
-  area.appendChild(box);
-
-  const row = el("div","btn-row");
-  const gotBtn  = el("button","btn btn-success","✓ Got it");
-  const missBtn = el("button","btn btn-danger","✗ Missed it");
-  gotBtn.addEventListener("click",  () => nextCard(true));
-  missBtn.addEventListener("click", () => nextCard(false));
-  row.appendChild(missBtn);
-  row.appendChild(gotBtn);
-  area.appendChild(row);
-}
-
-/* ── Produce mode — flashcard, English shown, say it aloud, self-report ── */
+/* ── Produce mode ── */
 function renderProduce(area, { item }) {
-  const card = el("div","card");
-  card.appendChild(el("div","card-direction","English → say it in Nepali"));
-  card.appendChild(el("div","card-eng", item.eng));
-  card.appendChild(el("div","card-hint","Say it aloud, then reveal to check yourself"));
-  card.appendChild(makeExplainBtn(item));
-  area.appendChild(card);
+  // Front
+  const frontNodes = [
+    el("div","card-direction","English → say it in Nepali"),
+    el("div","card-eng", item.eng),
+    el("div","card-hint","Say it aloud, then flip to check"),
+  ];
 
-  if (!state.revealed) {
-    const revBtn = el("button","btn btn-ghost","Show answer");
-    revBtn.id = "reveal-btn";
-    revBtn.addEventListener("click", () => {
-      state.revealed = true;
-      renderProduceAnswer(area, item);
-      revBtn.remove();
-    });
-    area.appendChild(revBtn);
-  } else {
-    renderProduceAnswer(area, item);
-  }
-}
-
-function renderProduceAnswer(area, item) {
-  const box = el("div","answer-box");
-  box.appendChild(el("div","ans-dev", item.dev));
+  // Back
   const rom = el("div","card-rom", item.rom);
-  if (state.showRom) rom.classList.add("visible");
-  box.appendChild(rom);
-  const togBtn = el("button","pron-toggle",
-    state.showRom ? "hide pronunciation" : "pronunciation");
-  togBtn.addEventListener("click", () => {
-    state.showRom = !state.showRom;
-    saveState();
-    rom.classList.toggle("visible", state.showRom);
-    togBtn.textContent = state.showRom ? "hide pronunciation" : "pronunciation";
-  });
-  box.appendChild(togBtn);
-  area.appendChild(box);
+  const backNodes = [
+    el("div","card-direction","Answer"),
+    el("div","card-dev", item.dev),
+    makePronToggle(rom),
+    rom,
+    makeExplainBtn(item),
+    makeGotItRow(),
+  ];
 
-  const row = el("div","btn-row");
-  const gotBtn  = el("button","btn btn-success","✓ Got it");
-  const missBtn = el("button","btn btn-danger","✗ Missed it");
-  gotBtn.addEventListener("click",  () => nextCard(true));
-  missBtn.addEventListener("click", () => nextCard(false));
-  row.appendChild(missBtn);
-  row.appendChild(gotBtn);
-  area.appendChild(row);
+  area.appendChild(buildFlipCard(frontNodes, backNodes));
 }
 
 /* ── Multiple choice ── */
 function renderMC(area, { item, direction }) {
-  const card = el("div","card");
-  card.appendChild(el("div","card-direction",
+  const card  = el("div","card card-mc");
+  const face  = el("div","card-front");
+  face.style.position = "relative"; // keep card-direction absolute anchor
+
+  face.appendChild(el("div","card-direction",
     direction === "eng-to-nep" ? "English → Nepali" : "Nepali → English"));
 
   if (direction === "eng-to-nep") {
-    card.appendChild(el("div","card-eng", item.eng));
+    face.appendChild(el("div","card-eng", item.eng));
   } else {
-    const dev = el("div","card-dev", item.dev);
     const rom = el("div","card-rom", item.rom);
-    card.appendChild(dev);
-    card.appendChild(makePronToggle(rom));
-    card.appendChild(rom);
+    face.appendChild(el("div","card-dev", item.dev));
+    face.appendChild(makePronToggle(rom));
+    face.appendChild(rom);
   }
 
-  card.appendChild(makeExplainBtn(item));
+  face.appendChild(makeExplainBtn(item));
+  card.appendChild(face);
   area.appendChild(card);
 
   // Build 4 options: correct + 3 distractors
@@ -493,6 +497,27 @@ $("reset-btn").addEventListener("click", () => {
     b.classList.toggle("active", b.dataset.mode === "vocab"));
   buildFilterBar();
   startDeck();
+});
+
+/* ── Keyboard shortcuts ── */
+document.addEventListener("keydown", (e) => {
+  if (isMCMode()) return;
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+  const card = document.querySelector(".card");
+
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    e.preventDefault();
+    if (!card) return;
+    state.revealed = !state.revealed;
+    card.classList.toggle("flipped", state.revealed);
+  } else if (e.key === "ArrowRight") {
+    e.preventDefault();
+    if (state.revealed) resolveCard(true);
+  } else if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    if (state.revealed) resolveCard(false);
+  }
 });
 
 /* ── Boot ── */

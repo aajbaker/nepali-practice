@@ -143,28 +143,86 @@ body {
   transition: width 0.3s ease;
 }
 
-/* ── Card ── */
+/* ── Card flip ── */
 .card {
+  height: 280px;
+  perspective: 1200px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card.flipped .card-inner {
+  transform: rotateX(180deg);
+}
+
+.card-front,
+.card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 36px 32px 28px;
-  text-align: center;
-  min-height: 260px;
+  padding: 44px 32px 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
+  text-align: center;
+}
+
+.card-back {
+  transform: rotateX(180deg);
+  background: #fafffe;
+  border-color: #c8ead8;
+}
+
+/* ── Card fly-out animations ── */
+@keyframes fly-right {
+  to { transform: translateX(140%) rotate(18deg); opacity: 0; }
+}
+@keyframes fly-left {
+  to { transform: translateX(-140%) rotate(-18deg); opacity: 0; }
+}
+.card.fly-right { animation: fly-right 0.22s cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
+.card.fly-left  { animation: fly-left  0.22s cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
+
+.card-flip-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.card-key-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  opacity: 0.55;
+  margin-top: auto;
+  padding-top: 4px;
+  letter-spacing: 0.02em;
 }
 
 .card-direction {
+  position: absolute;
+  top: 14px;
+  left: 18px;
   font-size: 0.75rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  align-self: flex-start;
 }
 
 .card-dev {
@@ -215,19 +273,6 @@ body {
   border-color: #93c5fd;
 }
 
-/* ── Answer section (flashcard) ── */
-#answer-section { margin-top: 8px; width: 100%; }
-
-.answer-box {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 8px;
-  padding: 16px 20px;
-  margin-bottom: 12px;
-  text-align: center;
-}
-.answer-box .ans-dev { font-size: 1.8rem; font-weight: 700; }
-.answer-box .ans-eng { font-size: 1.1rem; color: var(--text-muted); margin-top: 4px; }
 
 /* ── Buttons ── */
 .btn {
@@ -261,6 +306,11 @@ body {
 
 .btn-sm { padding: 6px 14px; font-size: 0.82rem; }
 
+.btn-action {
+  justify-content: space-between;
+  min-width: 148px;
+}
+
 .btn-row {
   display: flex;
   gap: 10px;
@@ -269,18 +319,30 @@ body {
   margin-top: 10px;
 }
 
-/* ── Reveal / show answer btn ── */
-#reveal-btn { margin-top: 12px; }
 
 
 /* ── Multiple choice ── */
+.card-mc {
+  height: auto;
+  min-height: 0;
+  cursor: default;
+}
+.card-mc .card-front {
+  position: relative;
+  inset: unset;
+  backface-visibility: visible;
+  -webkit-backface-visibility: visible;
+  transform: none;
+  border-radius: var(--radius);
+}
+
 #mc-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   width: 100%;
   max-width: 480px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .mc-option {
@@ -352,7 +414,8 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 500px) {
-  .card { padding: 28px 20px 22px; }
+  .card { height: 320px; }
+  .card-front, .card-back { padding: 22px 18px 18px; }
   .card-dev { font-size: 2.2rem; }
   #mc-options { grid-template-columns: 1fr; }
 }
