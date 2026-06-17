@@ -467,7 +467,10 @@ function startDeck() {
 
 /* ── Mode buttons ── */
 function initModeBtns() {
+  // Clear the hardcoded HTML active class, then apply from saved state
+  document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".mode-btn").forEach(btn => {
+    if (btn.dataset.mode === state.mode) btn.classList.add("active");
     btn.addEventListener("click", () => {
       state.mode = btn.dataset.mode;
       // reset filter to "all" when switching between vocab and sentence modes
@@ -483,7 +486,6 @@ function initModeBtns() {
       buildFilterBar();
       startDeck();
     });
-    if (btn.dataset.mode === state.mode) btn.classList.add("active");
   });
 }
 

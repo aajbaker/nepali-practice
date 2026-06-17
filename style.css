@@ -415,4 +415,7 @@ body {
   .card-front, .card-back { padding: 22px 18px 18px; }
   .card-dev { font-size: 2.2rem; }
   #mc-options { grid-template-columns: 1fr; }
+  .card-mc { height: auto !important; }
+  .card-mc .card-front { padding: 40px 20px 16px; }
+  #mc-options { margin-top: 6px; }
 }
